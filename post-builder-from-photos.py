@@ -6,19 +6,20 @@ import instaloader
 from instaloader import Post
 from PIL import Image, ImageFont, ImageDraw
 
-TOP_MARGIN = 81
+TOP_MARGIN = 251
 
 LEFT_MARGIN = 138
 
 WHITE = (255, 255, 255)
-IMAGE_SIZE = 1024
+IMAGE_SIZE_X = 1000
+IMAGE_SIZE_Y = 1333
 MAX_PHOTO_SIZE = 757
 INPUT_DIRECTORY_PATH = "input"
 
 
 def list_files_in_folder_with_extension(folder_path):
     folder = Path(folder_path)
-    files = [str(file) for file in folder.glob('**/*') if file.is_file()]
+    files = [str(file) for file in folder.glob('**/*') if file.is_file() and not file.name.startswith('.')]
     return files
 
 
@@ -27,7 +28,7 @@ def resize_image(original_width, original_height, max_size):
     aspect_ratio = original_width / original_height
 
     # Determine which side is longer
-    if original_width > original_height:
+    if original_width < original_height:
         # If width is longer, calculate new width and height based on max_size
         new_width = max_size
         new_height = int(max_size / aspect_ratio)
@@ -54,18 +55,19 @@ title = sys.argv[2]
 imagesPaths = list_files_in_folder_with_extension(INPUT_DIRECTORY_PATH)
 
 for path in imagesPaths:
-    resultImage = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), WHITE)
+    resultImage = Image.new("RGB", (IMAGE_SIZE_X, IMAGE_SIZE_Y), WHITE)
     photo = Image.open(path)
     new_width, new_height = resize_image(photo.width, photo.height, MAX_PHOTO_SIZE)
     photo = photo.resize((new_width, new_height))
-    x, y = calculate_photo_position(new_width, new_height, TOP_MARGIN, MAX_PHOTO_SIZE, IMAGE_SIZE)
+    x, y = calculate_photo_position(new_width, new_height, TOP_MARGIN, MAX_PHOTO_SIZE, IMAGE_SIZE_X)
 
     fontItalic = ImageFont.truetype("font/PoltawskiNowy-Italic.ttf", 24)
     fontBold = ImageFont.truetype("font/PoltawskiNowy-Bold.ttf", 24)
 
     draw = ImageDraw.Draw(im=resultImage)
-    draw.text(xy=(LEFT_MARGIN, 920), text="@" + username, font=fontItalic, fill='black', align='left')
-    draw.text(xy=(LEFT_MARGIN, 885), text=title, font=fontBold, fill='black', align='left')
+    text_y = y + new_height
+    draw.text(xy=(LEFT_MARGIN, text_y + 70), text="@" + username, font=fontItalic, fill='black', align='left')
+    draw.text(xy=(LEFT_MARGIN, text_y + 40), text=title, font=fontBold, fill='black', align='left')
 
     resultImage.paste(photo, (x, y))
     resultImage.save("output/" + path, "png")
