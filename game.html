@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Pixel Miner</title>
+    <style>
+        :root { color-scheme: dark; }
+        body{
+          margin:0; background:#0b0f14; color:#e7eef8; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+          display:flex; align-items:center; justify-content:center; min-height:100vh;
+        }
+        .wrap{ width:min(980px, 96vw); }
+        .top{
+          display:flex; gap:12px; align-items:stretch; justify-content:space-between; margin:10px 0;
+          flex-wrap:wrap;
+        }
+        .panel{
+          background:#101826; border:1px solid #1d2a3f; border-radius:12px; padding:10px 12px;
+          box-shadow: 0 10px 30px rgba(0,0,0,.25);
+        }
+        canvas{
+          width:100%; height:auto; image-rendering: pixelated; border-radius:14px;
+          border:1px solid #1d2a3f; background:#070a0f;
+          box-shadow: 0 10px 35px rgba(0,0,0,.35);
+        }
+        .row{ display:flex; gap:10px; flex-wrap:wrap; }
+        .k{ opacity:.85; }
+        .btn{
+          cursor:pointer; user-select:none;
+          padding:8px 10px; border-radius:10px;
+          border:1px solid #23324d; background:#142035;
+        }
+        .btn:hover{ filter:brightness(1.07); }
+        .muted{ opacity:.75; }
+        .shop{
+          position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+          background: rgba(0,0,0,.55);
+          backdrop-filter: blur(4px);
+        }
+        .shop .box{
+          width:min(640px, 92vw);
+          background:#0f1726; border:1px solid #243552; border-radius:16px;
+          padding:14px 14px 12px;
+          box-shadow: 0 25px 80px rgba(0,0,0,.55);
+        }
+        .shop h2{ margin:0 0 8px; font-size:18px; }
+        .shop .item{
+          display:flex; align-items:center; justify-content:space-between; gap:12px;
+          padding:10px; border-radius:12px; border:1px solid #1f2e49; background:#111c30;
+          margin:10px 0;
+        }
+        .pill{
+          display:inline-block; padding:2px 8px; border-radius:999px;
+          border:1px solid #2a3b5c; background:#0f1a2f; opacity:.95;
+          font-size:12px;
+        }
+        .ok{ color:#7cffb2; }
+        .warn{ color:#ffd27c; }
+        .bad{ color:#ff7c7c; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <div class="panel" style="flex:1; min-width:280px">
+            <div><b>Pixel Miner</b> <span class="muted">— kop w dół, zbieraj, ulepszaj</span></div>
+            <div class="k" style="margin-top:6px; line-height:1.35">
+                Sterowanie: <span class="pill">WASD / strzałki</span> ruch,
+                <span class="pill">Spacja</span> kop,
+                <span class="pill">E</span> sklep (na powierzchni),
+                <span class="pill">R</span> restart
+            </div>
+        </div>
+
+        <div class="panel" style="min-width:260px">
+            <div id="stats"></div>
+            <div style="margin-top:8px" class="row">
+                <div class="btn" id="btnShop">Sklep (E)</div>
+                <div class="btn" id="btnRestart">Restart (R)</div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="c" width="960" height="540"></canvas>
+
+    <div class="panel" style="margin:10px 0">
+        <div id="inv"></div>
+    </div>
+</div>
+
+<div class="shop" id="shop">
+    <div class="box">
+        <h2>Sklep / Ulepszenia <span class="muted">(tylko przy powierzchni)</span></h2>
+        <div class="muted" style="margin-bottom:10px">
+            Sprzedajesz surowce automatycznie przy zakupie (płacisz w “coinach”). Zbieraj głębiej, żeby trafiać na lepsze rudy.
+        </div>
+
+        <div class="item">
+            <div>
+                <div><b>Lepszy kilof</b> <span class="pill">+1 siła kopania</span></div>
+                <div class="muted">Kopiesz twardsze bloki szybciej i z mniejszym kosztem energii.</div>
+            </div>
+            <div style="text-align:right">
+                <div>Koszt: <b id="costPick">0</b> 🪙</div>
+                <div class="btn" id="buyPick">Kup</div>
+            </div>
+        </div>
+
+        <div class="item">
+            <div>
+                <div><b>Pojemniejszy plecak</b> <span class="pill">+10 slotów</span></div>
+                <div class="muted">Większy limit noszonych surowców (łączna ilość).</div>
+            </div>
+            <div style="text-align:right">
+                <div>Koszt: <b id="costBag">0</b> 🪙</div>
+                <div class="btn" id="buyBag">Kup</div>
+            </div>
+        </div>
+
+        <div class="item">
+            <div>
+                <div><b>Latarka</b> <span class="pill">+2 zasięg widzenia</span></div>
+                <div class="muted">Zwiększa promień rozjaśnienia pod ziemią.</div>
+            </div>
+            <div style="text-align:right">
+                <div>Koszt: <b id="costTorch">0</b> 🪙</div>
+                <div class="btn" id="buyTorch">Kup</div>
+            </div>
+        </div>
+
+        <div class="row" style="justify-content:space-between; margin-top:12px;">
+            <div class="muted">Tip: stój na polu <span class="pill">GRASS</span> (y=0), żeby otworzyć sklep.</div>
+            <div class="btn" id="closeShop">Zamknij (E)</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+      // ======= Konfiguracja =======
+      const TILE = 16;        // rozmiar kafla w "pikselach"
+      const WORLD_W = 140;    // szerokość świata w kaflach
+      const WORLD_H = 240;    // wysokość świata w kaflach
+      const VIEW_W = 60;      // ile kafli widać poziomo (kamera)
+      const VIEW_H = 34;      // ile kafli widać pionowo (kamera)
+
+      const canvas = document.getElementById('c');
+      const ctx = canvas.getContext('2d');
+
+      // Dopasuj rozdzielczość canvasa do kafli (pixel-perfect)
+      canvas.width  = VIEW_W * TILE;
+      canvas.height = VIEW_H * TILE;
+
+      // ======= Typy bloków =======
+      const T = {
+        AIR: 0,
+        GRASS: 1,
+        DIRT: 2,
+        STONE: 3,
+        COAL: 4,
+        COPPER: 5,
+        IRON: 6,
+        GOLD: 7,
+        GEM: 8,
+        BEDROCK: 9
+      };
+
+      const tileName = {
+        0:"Powietrze",
+        1:"Trawa",
+        2:"Ziemia",
+        3:"Kamień",
+        4:"Węgiel",
+        5:"Miedź",
+        6:"Żelazo",
+        7:"Złoto",
+        8:"Kryształ",
+        9:"Skała macierzysta"
+      };
+
+      // "Twardość" bloku: ile siły potrzeba, żeby efektywnie kopać
+      const hardness = {
+        [T.AIR]: 0,
+        [T.GRASS]: 1,
+        [T.DIRT]: 1,
+        [T.STONE]: 2,
+        [T.COAL]: 2,
+        [T.COPPER]: 3,
+        [T.IRON]: 4,
+        [T.GOLD]: 5,
+        [T.GEM]: 6,
+        [T.BEDROCK]: 999
+      };
+
+      // Wartość sprzedaży (coin) za sztukę
+      const value = {
+        [T.DIRT]: 1,
+        [T.STONE]: 2,
+        [T.COAL]: 5,
+        [T.COPPER]: 8,
+        [T.IRON]: 12,
+        [T.GOLD]: 20,
+        [T.GEM]: 45
+      };
+
+      // Kolory (pixel art-ish)
+      const col = {
+        bg: "#070a0f",
+        ui: "#e7eef8",
+        shadow: "rgba(0,0,0,.45)",
+        [T.AIR]: null,
+        [T.GRASS]: "#2c8a4d",
+        [T.DIRT]: "#6b4a2f",
+        [T.STONE]: "#6a7380",
+        [T.COAL]: "#2f353d",
+        [T.COPPER]: "#b76a3c",
+        [T.IRON]: "#a7b2be",
+        [T.GOLD]: "#d7b13c",
+        [T.GEM]: "#6b7cff",
+        [T.BEDROCK]: "#111217"
+      };
+
+      // Drobne “patterny” na rudy
+      function drawOreSpecks(x, y, t){
+        const specks = [];
+        if (t === T.COAL)   specks.push(["#111217", 5]);
+        if (t === T.COPPER) specks.push(["#e39b6a", 5]);
+        if (t === T.IRON)   specks.push(["#d6dde6", 5]);
+        if (t === T.GOLD)   specks.push(["#ffe58a", 6]);
+        if (t === T.GEM)    specks.push(["#b8c2ff", 7]);
+
+        for (const [c, n] of specks){
+          ctx.fillStyle = c;
+          for (let i=0;i<n;i++){
+            const px = x + ((i*7 + (t*13)) % (TILE-2)) + 1;
+            const py = y + ((i*11 + (t*5)) % (TILE-2)) + 1;
+            ctx.fillRect(px, py, 2, 2);
+          }
+        }
+      }
+
+      // ======= RNG / noise prosty =======
+      function mulberry32(seed){
+        return function(){
+          let t = seed += 0x6D2B79F5;
+          t = Math.imul(t ^ t >>> 15, t | 1);
+          t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+          return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+      }
+
+      const seed = (Date.now() & 0xffffffff) >>> 0;
+      let rand = mulberry32(seed);
+
+      // ======= Świat =======
+      let world = new Uint8Array(WORLD_W * WORLD_H);
+      const idx = (x,y) => x + y*WORLD_W;
+      const inBounds = (x,y) => x>=0 && y>=0 && x<WORLD_W && y<WORLD_H;
+
+      function getTile(x,y){
+        if (!inBounds(x,y)) return T.BEDROCK;
+        return world[idx(x,y)];
+      }
+      function setTile(x,y,t){
+        if (!inBounds(x,y)) return;
+        world[idx(x,y)] = t;
+      }
+
+      function genWorld(){
+        world = new Uint8Array(WORLD_W * WORLD_H);
+        rand = mulberry32(seed ^ 0x9e3779b9);
+
+        // “Powierzchnia” = y=0, lekka wariacja wysokości gruntu
+        const heights = new Int16Array(WORLD_W);
+        let h = 0;
+        for (let x=0;x<WORLD_W;x++){
+          const step = (rand() < 0.45 ? -1 : (rand() < 0.9 ? 0 : 1));
+          h = Math.max(-2, Math.min(2, h + step));
+          heights[x] = h;
+        }
+
+        for (let x=0;x<WORLD_W;x++){
+          const groundY = 0 - heights[x]; // gdzie zaczyna się ziemia
+          for (let y=0;y<WORLD_H;y++){
+            let t = T.AIR;
+
+            if (y < groundY){
+              t = T.AIR;
+            } else if (y === groundY){
+              t = T.GRASS;
+            } else if (y <= groundY + 5){
+              t = T.DIRT;
+            } else {
+              // głębiej: kamień + rudy zależnie od głębokości
+              t = T.STONE;
+
+              const d = y; // depth
+              // “warstwy” - prawdopodobieństwa rud rosną z głębokością
+              const r = rand();
+
+              // węgiel dość wcześnie
+              if (d > 10 && r < 0.06) t = T.COAL;
+
+              // miedź średnio wcześnie
+              if (d > 22 && r < 0.05) t = T.COPPER;
+
+              // żelazo
+              if (d > 40 && r < 0.04) t = T.IRON;
+
+              // złoto
+              if (d > 70 && r < 0.03) t = T.GOLD;
+
+              // kryształy najgłębiej
+              if (d > 120 && r < 0.02) t = T.GEM;
+
+              // kieszenie ziemi (żeby nie było monotonnie)
+              if (d > 12 && rand() < 0.02) t = T.DIRT;
+            }
+
+            // bedrock na dole
+            if (y >= WORLD_H-2) t = T.BEDROCK;
+
+            setTile(x,y,t);
+          }
+        }
+
+        // Wykop startowy i mała “jaskinia” na początku
+        const sx = Math.floor(WORLD_W/2);
+        for (let y=0;y<6;y++){
+          setTile(sx, y, T.AIR);
+          setTile(sx-1, y, T.AIR);
+          setTile(sx+1, y, T.AIR);
+        }
+        for (let x=sx-3;x<=sx+3;x++){
+          setTile(x, 1, T.AIR);
+          setTile(x, 2, T.AIR);
+        }
+        setTile(sx, 0, T.GRASS);
+      }
+
+      // ======= Gracz =======
+      const player = {
+        x: Math.floor(WORLD_W/2),
+        y: 0,
+        dirX: 0,
+        dirY: 1, // domyślnie w dół
+        hp: 100,
+        energy: 100,
+        coins: 0,
+        pick: 1,       // siła kopania
+        bag: 40,       // limit (łączna ilość)
+        torch: 0,      // poziom latarki
+        digCooldown: 0
+      };
+
+      const inv = {
+        [T.DIRT]: 0,
+        [T.STONE]: 0,
+        [T.COAL]: 0,
+        [T.COPPER]: 0,
+        [T.IRON]: 0,
+        [T.GOLD]: 0,
+        [T.GEM]: 0
+      };
+
+      function invCount(){
+        let n=0;
+        for (const k in inv) n += inv[k];
+        return n;
+      }
+
+      function canCarry(){
+        return invCount() < player.bag;
+      }
+
+      function addItem(t){
+        if (!(t in inv)) return;
+        if (!canCarry()) return;
+        inv[t] += 1;
+      }
+
+      function sellAll(){
+        let total = 0;
+        for (const k in inv){
+          const t = Number(k);
+          const amt = inv[t] || 0;
+          if (amt > 0){
+            total += amt * (value[t] || 0);
+            inv[t] = 0;
+          }
+        }
+        player.coins += total;
+        return total;
+      }
+
+      // ======= UI =======
+      const statsEl = document.getElementById('stats');
+      const invEl = document.getElementById('inv');
+
+      const shopEl = document.getElementById('shop');
+      const btnShop = document.getElementById('btnShop');
+      const btnRestart = document.getElementById('btnRestart');
+      const closeShop = document.getElementById('closeShop');
+
+      const costPickEl = document.getElementById('costPick');
+      const costBagEl = document.getElementById('costBag');
+      const costTorchEl = document.getElementById('costTorch');
+
+      const buyPick = document.getElementById('buyPick');
+      const buyBag  = document.getElementById('buyBag');
+      const buyTorch= document.getElementById('buyTorch');
+
+      function pickCost(){ return 30 + (player.pick-1) * 45; }
+      function bagCost(){  return 25 + Math.floor((player.bag-40)/10) * 35; }
+      function torchCost(){return 35 + player.torch * 50; }
+
+      function atSurface(){
+        // powierzchnia: y==0 i stoi na trawie lub obok powietrza? Uproszczenie:
+        return player.y === 0;
+      }
+
+      function showShop(show){
+        shopEl.style.display = show ? "flex" : "none";
+        costPickEl.textContent = pickCost();
+        costBagEl.textContent = bagCost();
+        costTorchEl.textContent = torchCost();
+      }
+
+      function updateUI(msg=""){
+        const depth = player.y;
+        const carry = invCount();
+        const cap = player.bag;
+
+        statsEl.innerHTML =
+          `🪙 <b>${player.coins}</b> &nbsp; | &nbsp; ⛏️ <b>${player.pick}</b> &nbsp; | &nbsp; 🎒 <b>${carry}/${cap}</b>` +
+          `<div class="muted" style="margin-top:6px">Głębokość: <b>${depth}</b> &nbsp; | &nbsp; Energia: <b>${Math.max(0,Math.floor(player.energy))}</b>` +
+          (msg ? ` &nbsp; | &nbsp; <span class="warn">${msg}</span>` : "") +
+          `</div>`;
+
+        const parts = [];
+        for (const t of [T.DIRT,T.STONE,T.COAL,T.COPPER,T.IRON,T.GOLD,T.GEM]){
+          parts.push(`${tileName[t]}: <b>${inv[t]}</b>`);
+        }
+        invEl.innerHTML = `Ekwipunek: ${parts.join(" &nbsp;•&nbsp; ")}`;
+      }
+
+      // ======= Sterowanie =======
+      const keys = new Set();
+      window.addEventListener('keydown', (e) => {
+        const k = e.key.toLowerCase();
+        if (["arrowup","arrowdown","arrowleft","arrowright"," ","e","r","w","a","s","d"].includes(k) || e.key === " ") e.preventDefault();
+
+        if (k === "e"){
+          if (shopEl.style.display === "flex") showShop(false);
+          else if (atSurface()) showShop(true);
+          else flash("Wróć na powierzchnię (y=0), żeby otworzyć sklep.");
+          return;
+        }
+        if (k === "r"){
+          restart();
+          return;
+        }
+
+        keys.add(k);
+      }, {passive:false});
+
+      window.addEventListener('keyup', (e) => {
+        keys.delete(e.key.toLowerCase());
+        if (e.key === " ") keys.delete(" ");
+      });
+
+      btnShop.onclick = () => {
+        if (shopEl.style.display === "flex") showShop(false);
+        else if (atSurface()) showShop(true);
+        else flash("Sklep działa tylko na powierzchni (y=0).");
+      };
+      btnRestart.onclick = () => restart();
+      closeShop.onclick = () => showShop(false);
+
+      function tryBuy(cost, onBuy){
+        if (!atSurface()){
+          flash("Zakupy tylko na powierzchni.");
+          return;
+        }
+        // przed zakupem sprzedaj wszystko, żeby uprościć ekonomię
+        const got = sellAll();
+        if (got > 0) flash(`Sprzedano surowce za ${got}🪙`);
+        if (player.coins < cost){
+          flash("Za mało coinów.");
+          return;
+        }
+        player.coins -= cost;
+        onBuy();
+        updateUI("Kupiono!");
+        showShop(true);
+      }
+
+      buyPick.onclick = () => tryBuy(pickCost(), () => player.pick += 1);
+      buyBag.onclick  = () => tryBuy(bagCost(),  () => player.bag += 10);
+      buyTorch.onclick= () => tryBuy(torchCost(),() => player.torch += 1);
+
+      // ======= Logika gry =======
+      let flashMsg = "";
+      let flashT = 0;
+
+      function flash(text){
+        flashMsg = text;
+        flashT = 120;
+      }
+
+      function solid(t){
+        return t !== T.AIR;
+      }
+
+      function move(dx, dy){
+        const nx = player.x + dx;
+        const ny = player.y + dy;
+        const t = getTile(nx, ny);
+        if (!solid(t)){
+          player.x = nx;
+          player.y = ny;
+          return true;
+        }
+        return false;
+      }
+
+      function dig(tx, ty){
+        const t = getTile(tx, ty);
+        if (t === T.AIR) return false;
+        if (t === T.BEDROCK){
+          flash("Nie do przebicia.");
+          return false;
+        }
+        if (!canCarry()){
+          flash("Plecak pełny. Wróć na górę i kup ulepszenia / “sprzedaj”.");
+          return false;
+        }
+        if (player.energy <= 0){
+          flash("Brak energii. Wyjdź na powierzchnię, żeby się zregenerować.");
+          return false;
+        }
+
+        const need = hardness[t];
+        const p = player.pick;
+
+        // koszt energii zależy od różnicy twardości
+        const extra = Math.max(0, need - p);
+        const energyCost = 6 + extra * 6;
+
+        // szansa na nieudane kopnięcie, jeśli kilof za słaby
+        const failChance = Math.min(0.7, extra * 0.2);
+
+        player.energy -= energyCost;
+
+        if (Math.random() < failChance){
+          flash("Za twarde… ulepsz kilof.");
+          return false;
+        }
+
+        // sukces: zbieramy item (oprócz trawy -> ziemia)
+        setTile(tx, ty, T.AIR);
+
+        if (t === T.GRASS) addItem(T.DIRT);
+        else if (t in inv) addItem(t);
+
+        return true;
+      }
+
+      function handleInput(){
+        let dx = 0, dy = 0;
+
+        const up    = keys.has("w") || keys.has("arrowup");
+        const down  = keys.has("s") || keys.has("arrowdown");
+        const left  = keys.has("a") || keys.has("arrowleft");
+        const right = keys.has("d") || keys.has("arrowright");
+
+        if (left)  dx = -1;
+        if (right) dx =  1;
+        if (up)    dy = -1;
+        if (down)  dy =  1;
+
+        // zapamiętaj kierunek “twarzy”
+        if (dx !== 0 || dy !== 0){
+          player.dirX = dx;
+          player.dirY = dy;
+        }
+
+        // ruch po osi — prosto i czytelnie
+        if (dx !== 0) move(dx, 0);
+        else if (dy !== 0) move(0, dy);
+
+        // kopanie
+        if (keys.has(" ")){
+          if (player.digCooldown <= 0){
+            const tx = player.x + (player.dirX || 0);
+            const ty = player.y + (player.dirY || 1);
+            // jeśli gracz stoi i nie ma kierunku, kop w dół
+            dig(tx, ty);
+            player.digCooldown = 9; // tempo kopania
+          }
+        }
+      }
+
+      function regen(){
+        // na powierzchni energia się regeneruje szybciej
+        const onTop = atSurface();
+        player.energy += onTop ? 1.4 : 0.25;
+        player.energy = Math.min(100, player.energy);
+
+        // nie pozwól wyjść poza mapę
+        player.x = Math.max(0, Math.min(WORLD_W-1, player.x));
+        player.y = Math.max(0, Math.min(WORLD_H-1, player.y));
+      }
+
+      // ======= Render =======
+      function drawTile(screenX, screenY, t){
+        if (t === T.AIR) return;
+
+        // baza
+        ctx.fillStyle = col[t] || "#fff";
+        ctx.fillRect(screenX, screenY, TILE, TILE);
+
+        // cień/detal
+        ctx.fillStyle = "rgba(0,0,0,.18)";
+        ctx.fillRect(screenX, screenY+TILE-3, TILE, 3);
+        ctx.fillRect(screenX+TILE-3, screenY, 3, TILE);
+
+        // specki dla rud
+        if (t === T.COAL || t === T.COPPER || t === T.IRON || t === T.GOLD || t === T.GEM){
+          drawOreSpecks(screenX, screenY, t);
+        }
+
+        // trawa ma “czapkę”
+        if (t === T.GRASS){
+          ctx.fillStyle = "#1e6c3b";
+          ctx.fillRect(screenX, screenY, TILE, 4);
+          ctx.fillStyle = "rgba(255,255,255,.08)";
+          ctx.fillRect(screenX, screenY, TILE, 1);
+        }
+      }
+
+      function drawPlayer(px, py){
+        // Ciało (prosty sprite 1 kafel)
+        // głowa
+        ctx.fillStyle = "#f2c7a0";
+        ctx.fillRect(px+5, py+4, 6, 6);
+        // hełm/kapelusz
+        ctx.fillStyle = "#c5ccd6";
+        ctx.fillRect(px+4, py+3, 8, 2);
+        // tułów
+        ctx.fillStyle = "#4b7cff";
+        ctx.fillRect(px+5, py+10, 6, 5);
+        // nogi
+        ctx.fillStyle = "#23324d";
+        ctx.fillRect(px+5, py+15, 2, 1);
+        ctx.fillRect(px+9, py+15, 2, 1);
+
+        // kilof (zależnie od kierunku)
+        const dx = player.dirX, dy = player.dirY;
+        const ax = px + 8 + dx*6;
+        const ay = py + 10 + dy*5;
+
+        ctx.fillStyle = "#9aa6b6";
+        ctx.fillRect(ax-1, ay-1, 3, 3);
+        ctx.fillStyle = "#7a552f";
+        ctx.fillRect(px+8, py+11, dx===0 ? 1 : 2, 4);
+
+        // mała “aura” latarki
+        if (!atSurface()){
+          const r = (3 + player.torch*2) * TILE;
+          const grad = ctx.createRadialGradient(px+8, py+8, 6, px+8, py+8, r);
+          grad.addColorStop(0, "rgba(255,240,200,.18)");
+          grad.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(px+8, py+8, r, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+
+      function render(){
+        ctx.fillStyle = col.bg;
+        ctx.fillRect(0,0,canvas.width, canvas.height);
+
+        // kamera: trzymaj gracza w centrum (z clampingiem)
+        const camX = Math.max(0, Math.min(WORLD_W - VIEW_W, player.x - Math.floor(VIEW_W/2)));
+        const camY = Math.max(0, Math.min(WORLD_H - VIEW_H, player.y - Math.floor(VIEW_H/2)));
+
+        // ciemność pod ziemią
+        const darkness = Math.min(0.78, Math.max(0, (player.y-2) / 60) * 0.9);
+
+        // rysuj mapę
+        for (let sy=0; sy<VIEW_H; sy++){
+          for (let sx=0; sx<VIEW_W; sx++){
+            const wx = camX + sx;
+            const wy = camY + sy;
+            const t = getTile(wx, wy);
+            const px = sx*TILE;
+            const py = sy*TILE;
+            drawTile(px, py, t);
+          }
+        }
+
+        // rysuj gracza
+        const pScreenX = (player.x - camX) * TILE;
+        const pScreenY = (player.y - camY) * TILE;
+        drawPlayer(pScreenX, pScreenY);
+
+        // nakładka ciemności (mniej na powierzchni)
+        if (darkness > 0){
+          ctx.fillStyle = `rgba(0,0,0,${darkness})`;
+          ctx.fillRect(0,0,canvas.width,canvas.height);
+
+          // “światło” latarki
+          const r = (3 + player.torch*2) * TILE;
+          const g = ctx.createRadialGradient(pScreenX+8, pScreenY+8, 10, pScreenX+8, pScreenY+8, r);
+          g.addColorStop(0, "rgba(0,0,0,0)");
+          g.addColorStop(1, `rgba(0,0,0,${darkness})`);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(pScreenX+8, pScreenY+8, r, 0, Math.PI*2);
+          ctx.fill();
+        }
+
+        // podpowiedź przy plecaku pełnym
+        if (invCount() >= player.bag){
+          ctx.fillStyle = "rgba(0,0,0,.55)";
+          ctx.fillRect(10,10, 390, 34);
+          ctx.fillStyle = "#ffd27c";
+          ctx.font = "14px ui-monospace, monospace";
+          ctx.fillText("Plecak pełny — wróć na górę (y=0) i wciśnij E (sklep).", 18, 32);
+        }
+
+        // mały HUD w rogu
+        ctx.fillStyle = "rgba(0,0,0,.35)";
+        ctx.fillRect(canvas.width-190, 10, 180, 54);
+        ctx.fillStyle = "#e7eef8";
+        ctx.font = "14px ui-monospace, monospace";
+        ctx.fillText(`Głęb.: ${player.y}`, canvas.width-178, 32);
+        ctx.fillText(`Energia: ${Math.floor(player.energy)}`, canvas.width-178, 52);
+      }
+
+      // ======= Pętla gry =======
+      function tick(){
+        if (player.digCooldown > 0) player.digCooldown -= 1;
+
+        // jeśli sklep otwarty — pauza inputu/motion
+        if (shopEl.style.display !== "flex"){
+          handleInput();
+        }
+
+        regen();
+
+        if (flashT > 0){
+          flashT--;
+          updateUI(flashMsg);
+        } else {
+          updateUI("");
+        }
+
+        render();
+        requestAnimationFrame(tick);
+      }
+
+      function restart(){
+        genWorld();
+        player.x = Math.floor(WORLD_W/2);
+        player.y = 0;
+        player.dirX = 0; player.dirY = 1;
+        player.energy = 100;
+        player.coins = 0;
+        player.pick = 1;
+        player.bag = 40;
+        player.torch = 0;
+        player.digCooldown = 0;
+        for (const k in inv) inv[k]=0;
+        showShop(false);
+        flash("Nowy świat wygenerowany.");
+      }
+
+      // start
+      genWorld();
+      updateUI("");
+      tick();
+    })();
+</script>
+</body>
+</html>
