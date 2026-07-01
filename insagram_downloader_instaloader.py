@@ -4,8 +4,7 @@ from instagrapi import Client
 from instagrapi.exceptions import LoginRequired
 
 SESSION_FILE = os.path.join(os.path.dirname(__file__), "session.json")
-USERNAME = "sophiaverney"
-PASSWORD = "Sophi@2023Krakow"
+
 
 
 def _get_client() -> Client:
