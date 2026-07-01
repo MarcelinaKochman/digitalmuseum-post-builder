@@ -3,15 +3,18 @@ import shutil
 import requests
 from pathlib import Path
 from instagrapi import Client
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SESSION_FILE = os.path.join(os.path.dirname(__file__), "session.json")
 
 
-def _get_client(username: str, password: str) -> Client:
+def _get_client() -> Client:
     cl = Client()
     if os.path.exists(SESSION_FILE):
         cl.load_settings(SESSION_FILE)
-    cl.login(username, password)
+    cl.login(os.environ["IG_USERNAME"], os.environ["IG_PASSWORD"])
     cl.dump_settings(SESSION_FILE)
     return cl
 
@@ -28,7 +31,7 @@ def download_instagram_post(username: str, password: str, post_url: str, save_pa
         shutil.rmtree(folder)
     folder.mkdir(parents=True)
 
-    cl = _get_client(username, password)
+    cl = _get_client()
 
     media_pk = cl.media_pk_from_url(post_url)
     media = cl.media_info(media_pk)
@@ -44,5 +47,4 @@ def download_instagram_post(username: str, password: str, post_url: str, save_pa
         ext = ".mp4" if media.video_url else ".jpg"
         _download_url(url, folder / f"post{ext}")
 
-    print("Download complete!")
     return post_username

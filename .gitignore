@@ -2,4 +2,4 @@
 .venv
 .DS_Store
 session-www.instagram.com.cookies.json
-.*_posts
+.*_posts.env

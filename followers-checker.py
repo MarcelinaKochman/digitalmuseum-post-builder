@@ -1,10 +1,11 @@
+import os
 import instaloader
+from dotenv import load_dotenv
 
-login_username = "nieczyndrugiemu"
-password = "M@r1995Koc"
+load_dotenv()
 
 L = instaloader.Instaloader()
-L.login(login_username, password)  # logowanie
+L.login(os.environ["IG_USERNAME_2"], os.environ["IG_PASSWORD_2"])  # logowanie
 
 profile = instaloader.Profile.from_username(L.context, 'digitalaiartmuseum')
 

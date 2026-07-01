@@ -1,10 +1,15 @@
 import os
+import shutil
+import requests
 from pathlib import Path
 from instagrapi import Client
-from instagrapi.exceptions import LoginRequired
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SESSION_FILE = os.path.join(os.path.dirname(__file__), "session.json")
-
+USERNAME = os.environ["IG_USERNAME"]
+PASSWORD = os.environ["IG_PASSWORD"]
 
 
 def _get_client() -> Client:
@@ -16,8 +21,17 @@ def _get_client() -> Client:
     return cl
 
 
+def _download_url(url: str, dest: Path):
+    r = requests.get(str(url), timeout=30)
+    r.raise_for_status()
+    dest.write_bytes(r.content)
+
+
 def download_instagram_post_instaloader(post_url: str, download_folder: str) -> str:
-    Path(download_folder).mkdir(parents=True, exist_ok=True)
+    folder = Path(download_folder)
+    if folder.exists():
+        shutil.rmtree(folder)
+    folder.mkdir(parents=True)
 
     if not post_url.startswith("http"):
         post_url = f"https://www.instagram.com/p/{post_url}/"
@@ -31,9 +45,11 @@ def download_instagram_post_instaloader(post_url: str, download_folder: str) -> 
     if media.resources:
         for i, resource in enumerate(media.resources):
             url = resource.video_url or resource.thumbnail_url
-            cl.photo_download_by_url(str(url), str(Path(download_folder) / f"post_{i}"))
+            ext = ".mp4" if resource.video_url else ".jpg"
+            _download_url(url, folder / f"post_{i}{ext}")
     else:
         url = media.video_url or media.thumbnail_url
-        cl.photo_download_by_url(str(url), str(Path(download_folder) / "post"))
+        ext = ".mp4" if media.video_url else ".jpg"
+        _download_url(url, folder / f"post{ext}")
 
     return username

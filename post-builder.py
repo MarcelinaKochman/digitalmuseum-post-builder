@@ -112,7 +112,8 @@ arg = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else ""
 
 is_reel = False
 
-
+login_username = ""
+password = ""
 download_folder = "downloads"
 
 output_folder = "output/" + download_folder + "/"
