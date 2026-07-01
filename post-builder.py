@@ -112,10 +112,7 @@ arg = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else ""
 
 is_reel = False
 
-login_username = ""
-password = ""
-# login_username = ""
-# password = ""
+
 download_folder = "downloads"
 
 output_folder = "output/" + download_folder + "/"
@@ -127,9 +124,9 @@ files = glob.glob(download_folder + "/" + "*")
 for f in files:
     os.remove(f)
 
-username = download_instagram_post_instaloader(post_url, download_folder)
-# username = download_instagram_post(login_username, password, post_url, download_folder)
-# username = "marcosmicozzi and @hef.prentice"
+# username = download_instagram_post_instaloader(post_url, download_folder)
+username = download_instagram_post(login_username, password, post_url, download_folder)
+# username = "sebastianpatrickp"
 title = sys.argv[2]
 
 # imagesPaths = list_files_in_folder_with_extension(download_folder)
@@ -208,7 +205,9 @@ for path in imagesPaths:
     else:
         print(f"Processing image: {path.name}")
         resultImage = Image.new("RGB", (IMAGE_SIZE_X, size_y), WHITE)
-        photo = Image.open(path)
+        photo = Image.open(path).convert("RGB")
+        w, h = photo.size
+        photo = photo.crop((0, 0, w - 2, h - 2))
         new_width, new_height = resize_image(photo.width, photo.height, MAX_PHOTO_SIZE)
         photo = photo.resize((new_width, new_height))
         x, y = calculate_photo_position(new_width, new_height, TOP_MARGIN, MAX_PHOTO_SIZE, IMAGE_SIZE_X)

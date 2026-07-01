@@ -1,2 +1,6 @@
-instagrapi>=1.17.0
-requests>=2.31.0 
+instagrapi==2.18.0
+instaloader==4.15.1
+moviepy==1.0.3
+Pillow
+requests==2.34.2
+yt-dlp==2026.6.9

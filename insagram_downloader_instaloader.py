@@ -1,30 +1,40 @@
-import instaloader
-from instaloader import Post
-from pathlib import Path
 import os
+from pathlib import Path
+from instagrapi import Client
+from instagrapi.exceptions import LoginRequired
 
-def download_instagram_post_instaloader(post_url, download_folder):
-    # Utwórz folder, jeśli nie istnieje
+SESSION_FILE = os.path.join(os.path.dirname(__file__), "session.json")
+USERNAME = "sophiaverney"
+PASSWORD = "Sophi@2023Krakow"
+
+
+def _get_client() -> Client:
+    cl = Client()
+    if os.path.exists(SESSION_FILE):
+        cl.load_settings(SESSION_FILE)
+    cl.login(USERNAME, PASSWORD)
+    cl.dump_settings(SESSION_FILE)
+    return cl
+
+
+def download_instagram_post_instaloader(post_url: str, download_folder: str) -> str:
     Path(download_folder).mkdir(parents=True, exist_ok=True)
 
-    # Wyodrębnij shortcode z linka
-    shortcode = post_url.rstrip('/').split('/')[-1]
+    if not post_url.startswith("http"):
+        post_url = f"https://www.instagram.com/p/{post_url}/"
 
-    # Inicjalizacja Instaloadera
-    L = instaloader.Instaloader(
-        download_video_thumbnails=False,
-        save_metadata=False,
-        download_comments=False,
-        compress_json=False
-    )
+    cl = _get_client()
 
-    # Pobierz metadane posta
-    post = Post.from_shortcode(L.context, shortcode)
+    media_pk = cl.media_pk_from_url(post_url)
+    media = cl.media_info(media_pk)
+    username = media.user.username
 
-    # Pobierz username autora posta
-    username = post.owner_username
-
-    # Pobierz wszystkie media (zdjęcia / film)
-    L.download_post(post, target=download_folder)
+    if media.resources:
+        for i, resource in enumerate(media.resources):
+            url = resource.video_url or resource.thumbnail_url
+            cl.photo_download_by_url(str(url), str(Path(download_folder) / f"post_{i}"))
+    else:
+        url = media.video_url or media.thumbnail_url
+        cl.photo_download_by_url(str(url), str(Path(download_folder) / "post"))
 
     return username
